@@ -16,5 +16,5 @@ If it is not, functions will return 0.
 	const char val[16];
 	printf("Enter OGRN to check: ");
 	scanf("%15s", val);
-	printf("\nYou've entered %s OGRN\n", check_ogrn(val));
+	printf("\nYou've entered %s OGRN\n", check_ogrn(val) ? "correct" : "wrong");
 ```
