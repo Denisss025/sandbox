@@ -20,18 +20,27 @@
  
 #include "checkdigit.h"
 
-#include <assert.h>
-#include <stdio.h>
 #include <string.h>
 #if defined(__SSE2__)
 #	include <emmintrin.h>
 #endif
 
+#define WRONG_VAL ((unsigned)(~0))
+
+#if defined(__GNUC__)
+#	define BUILTIN_EXPECT(val,exp) __builtin_expect((val),(exp))
+#else   /* BUILTIN_EXPECT */
+#define BUILTIN_EXPECT(val,exp) (val)
+#endif  /* BUILTIN_EXPECT */
+
 unsigned calc_checkdigit(const char *x, const char *w) {
 	unsigned sum;
 #if !defined(__SSE2__)
+	unsigned i;
 	sum = 0u;
-	for (unsigned i = 0u; i < 16u; ++i) {
+	for (i = 0u; i < 16u; ++i) {
+		if (BUILTIN_EXPECT(!isdigit(x[i]) && w[i],0)) return WRONG_VAL;
+
 		sum += (x[i] - '0') * w[i];
 	}
 #else
@@ -41,19 +50,31 @@ unsigned calc_checkdigit(const char *x, const char *w) {
 	__m128i xmm3;
 	/* load string into xmm registry */
 	xmm0 = _mm_loadu_si128((const __m128i*)x);
-	/* load array of 16 zeroes into xmm registry */
-	xmm1 = _mm_set_epi32(0x30303030, 0x30303030, 0x30303030, 0x30303030);
-	/* convert string to array of ints */
-	xmm0 = _mm_sub_epi8(xmm0, xmm1);
 	/* load control sum array */
 	xmm1 = _mm_loadu_si128((const __m128i*)w);
+
+	/* array of zeros */
+	xmm2 = _mm_set_epi32(0x30303030, 0x30303030, 0x30303030, 0x30303030);
+	/* !isdigit(x[i]) */
+	/* * x[i] > '9' */
+	xmm3 = _mm_cmpgt_epi8(xmm0, _mm_set_epi32(0x39393939, 0x39393939, 
+			0x39393939, 0x39393939));
+	/* * x[i] < '0' | x[i] > '9' */
+	xmm3 = _mm_or_si128(xmm3, _mm_cmplt_epi8(xmm0, xmm2));
+	/* w[i] != 0 & !isdigit(x[i]) */
+	xmm3 = _mm_andnot_si128(_mm_cmpeq_epi8(xmm1,
+			_mm_setzero_si128()), xmm3);
+
+	/* check if !isdigit(x[i]) && w[i] != 0 */
+	if (BUILTIN_EXPECT(_mm_movemask_epi8(xmm3), 0) != 0) return WRONG_VAL;
+
+	/* convert string to array of ints: x[i] - '0' */
+	xmm0 = _mm_sub_epi8(xmm0, xmm2);
 	/* lo-mask */
 	xmm2 = _mm_set_epi32(0x000F000F, 0x000F000F, 0x000F000F, 0x000F000F);
-	/* apply lo-mask */
-	xmm3 = _mm_and_si128(xmm2, xmm0);
-	xmm2 = _mm_and_si128(xmm2, xmm1);
 	/* multiply (lo) arrays */
-	xmm2 = _mm_mullo_epi16(xmm2, xmm3);
+	xmm2 = _mm_mullo_epi16(_mm_and_si128(xmm2, xmm0), 
+			_mm_and_si128(xmm2, xmm1));
 	/* hi-mask */
 	xmm3 = _mm_set_epi32(0x0F000F00, 0x0F000F00, 0x0F000F00, 0x0F000F00);
 	/* apply hi-mask */
@@ -76,15 +97,19 @@ int check_inn(const char *inn, size_t len) {
 		6, 8, 0, 0,  0, 0, 0, 0, 0 };
 
 	const char *m = x_cs;
-	const char *x = inn;
+	unsigned sum;
 
 	if (len == 10u) {
 		m += 2;
 	} else {
-		if (((calc_checkdigit(x, m + 1) % 11 % 10) + '0') != inn[10]) return 0;
+		sum = calc_checkdigit(inn, m + 1);
+		if (sum == WRONG_VAL) return 0;
+		if ((sum % 11 % 10 + '0') != inn[10]) return 0;
 	}
 
-	return inn[len-1] == (calc_checkdigit(x,m) % 11 % 10 + '0') ? 1 : 0;
+	sum = calc_checkdigit(inn, m);
+	if (sum == WRONG_VAL) return 0;
+	return inn[len-1] == (sum % 11 % 10 + '0') ? 1 : 0;
 }
 
 int check_ogrn(const char *ogrn) {
@@ -92,7 +117,10 @@ int check_ogrn(const char *ogrn) {
 		 10,  1, 10,  1, 10,  1, 10,  1,
 		 10,  1, 10,  1,  0,  0,  0,  0 };
 
-	return ogrn[12] == (calc_checkdigit(ogrn, x_13) % 11 % 10 + '0') ? 1 : 0;
+	unsigned sum;
+	sum = calc_checkdigit(ogrn, x_13);
+	if (sum == WRONG_VAL) return 0;
+	return ogrn[12] == (sum % 11 % 10 + '0') ? 1 : 0;
 }
 
 int check_ogrnip(const char *ogrnip) {
@@ -100,6 +128,10 @@ int check_ogrnip(const char *ogrnip) {
 		10,  1,  4,  3, 12,  9, 10,  1, 
 		 4,  3, 12,  9, 10,  1,  0,  0 };
 
-	return ogrnip[14] == (calc_checkdigit(ogrnip, x_15) % 13 % 10 + '0') ? 1 : 0;
+	unsigned sum;
+	sum = calc_checkdigit(ogrnip, x_15);
+	if (sum == WRONG_VAL) return 0;
+
+	return ogrnip[14] == (sum % 13 % 10 + '0') ? 1 : 0;
 }
 
