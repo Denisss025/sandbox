@@ -1,4 +1,4 @@
-/* checkdigit.h - Check digits for russian tax payer identifiers.
+/* checkdigit.c - Check digits for russian tax payer identifiers.
  *
  * Copyright © 2014 Denis Novikov
  *
@@ -18,20 +18,13 @@
  * Author: Denis Novikov <denisnovikov@garant.ru>
  */
  
-#include "checkdigit.h"
-
-#include <string.h>
+#include "sse2/checkdigit.h"
 #if defined(__SSE2__)
 #	include <emmintrin.h>
 #endif
+#include "details/builtin_defs.h"
 
 #define WRONG_VAL ((unsigned)(~0))
-
-#if defined(__GNUC__)
-#	define BUILTIN_EXPECT(val,exp) __builtin_expect((val),(exp))
-#else   /* BUILTIN_EXPECT */
-#define BUILTIN_EXPECT(val,exp) (val)
-#endif  /* BUILTIN_EXPECT */
 
 unsigned calc_checkdigit(const char *x, const char *w) {
 	unsigned sum;
@@ -39,11 +32,12 @@ unsigned calc_checkdigit(const char *x, const char *w) {
 	unsigned i;
 	sum = 0u;
 	for (i = 0u; i < 16u; ++i) {
-		if (BUILTIN_EXPECT(!isdigit(x[i]) && w[i],0)) return WRONG_VAL;
+		if (BUILTIN_UNLIKELY(!isdigit(x[i]) && w[i])) return WRONG_VAL;
 
 		sum += (x[i] - '0') * w[i];
 	}
 #else
+	int mask;
 	__m128i xmm0;
 	__m128i xmm1;
 	__m128i xmm2;
@@ -66,7 +60,7 @@ unsigned calc_checkdigit(const char *x, const char *w) {
 			_mm_setzero_si128()), xmm3);
 
 	/* check if !isdigit(x[i]) && w[i] != 0 */
-	if (BUILTIN_EXPECT(_mm_movemask_epi8(xmm3), 0) != 0) return WRONG_VAL;
+	mask = _mm_movemask_epi8(xmm3);
 
 	/* convert string to array of ints: x[i] - '0' */
 	xmm0 = _mm_sub_epi8(xmm0, xmm2);
@@ -86,10 +80,21 @@ unsigned calc_checkdigit(const char *x, const char *w) {
 	xmm2 = _mm_slli_si128(xmm2, 1);
 	/* sum all the items of the array */
 	xmm0 = _mm_sad_epu8(xmm0, xmm2);
-	sum = _mm_extract_epi16(xmm0, 0) + _mm_extract_epi16(xmm0, 4);
+	sum = BUILTIN_UNLIKELY(mask) ? WRONG_VAL 
+			: _mm_extract_epi16(xmm0, 0) + _mm_extract_epi16(xmm0, 4);
 #endif
 	return sum;
 }
+
+#define CONCAT_IMPL(a, b) (a##b)
+#define CONCAT(a, b) CONCAT_IMPL(a, b)
+#define VAR(name) CONCAT(_##name##_, __LINE__)
+
+#define QUIT_ON_WRONG_WSUM(idx, wgt, mod, pos) if (1) {                    \
+	unsigned int VAR(sum); VAR(sum) = calc_checkdigit((idx), (wgt));   \
+	if (BUILTIN_UNLIKELY(VAR(sum) == WRONG_VAL) ||                     \
+			BUILTIN_UNLIKELY((VAR(sum) % (mod) % 10 + '0') !=  \
+			(idx)[(pos)])) { return 0; }}
 
 int check_inn(const char *inn, size_t len) {
 	const char x_cs[18] = { 
@@ -97,19 +102,15 @@ int check_inn(const char *inn, size_t len) {
 		6, 8, 0, 0,  0, 0, 0, 0, 0 };
 
 	const char *m = x_cs;
-	unsigned sum;
 
 	if (len == 10u) {
 		m += 2;
 	} else {
-		sum = calc_checkdigit(inn, m + 1);
-		if (sum == WRONG_VAL) return 0;
-		if ((sum % 11 % 10 + '0') != inn[10]) return 0;
+		QUIT_ON_WRONG_WSUM(inn, m + 1, 11, 10);
 	}
 
-	sum = calc_checkdigit(inn, m);
-	if (sum == WRONG_VAL) return 0;
-	return inn[len-1] == (sum % 11 % 10 + '0') ? 1 : 0;
+	QUIT_ON_WRONG_WSUM(inn, m, 11, len-1);
+	return 1;
 }
 
 int check_ogrn(const char *ogrn) {
@@ -117,10 +118,8 @@ int check_ogrn(const char *ogrn) {
 		 10,  1, 10,  1, 10,  1, 10,  1,
 		 10,  1, 10,  1,  0,  0,  0,  0 };
 
-	unsigned sum;
-	sum = calc_checkdigit(ogrn, x_13);
-	if (sum == WRONG_VAL) return 0;
-	return ogrn[12] == (sum % 11 % 10 + '0') ? 1 : 0;
+	QUIT_ON_WRONG_WSUM(ogrn, x_13, 11, 12);
+	return 1;
 }
 
 int check_ogrnip(const char *ogrnip) {
@@ -128,10 +127,7 @@ int check_ogrnip(const char *ogrnip) {
 		10,  1,  4,  3, 12,  9, 10,  1, 
 		 4,  3, 12,  9, 10,  1,  0,  0 };
 
-	unsigned sum;
-	sum = calc_checkdigit(ogrnip, x_15);
-	if (sum == WRONG_VAL) return 0;
-
-	return ogrnip[14] == (sum % 13 % 10 + '0') ? 1 : 0;
+	QUIT_ON_WRONG_WSUM(ogrnip, x_15, 13, 14);
+	return 1;
 }
 
