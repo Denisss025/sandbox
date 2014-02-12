@@ -19,10 +19,11 @@
  */
 
 #if defined(__cplusplus)
+#	include <cstddef>
 extern "C" {
+#else
+#	include <stddef.h>
 #endif
-
-#include <stddef.h>
 
 /**
  * @brief Check if the string is a utf-8 string.
@@ -31,6 +32,15 @@ extern "C" {
  * return \em true if the string has UTF-8 charset.
  */
 int is_utf8_str(const char *str, size_t len);
+
+/**
+ * @brief Get the length of a given string.
+ * @param str - given string.
+ * @param size - size of the given data.
+ * @return Length of the given string. \em -1 if the given string is not
+ *  in UTF-8.
+ */
+int utf8_strlen(const char *str, size_t size);
 
 #if defined(__cplusplus)
 }

@@ -35,10 +35,13 @@ int main() {
 		NULL
 	};
 
-	printf("TEST[0] = %s\n", is_utf8_str(test[0], 0) ? "OK" : "FAIL");
-	printf("TEST[1] = %s\n", is_utf8_str(test[1], 0) ? "FAIL" : "OK");
+	printf("TEST[0] = %s (length: %d)\n", is_utf8_str(test[0], 0) ? 
+			"OK" : "FAIL", utf8_strlen(test[0], 0));
+	printf("TEST[1] = %s (length: %d)\n", is_utf8_str(test[1], 0) ? 
+			"FAIL" : "OK", utf8_strlen(test[1], 0));
 	for (i = 2; test[i]; ++i) {
-		printf("TEST[%d] = %s\n", i, is_utf8_str(test[i], 0) ? "OK" : "FAIL");
+		printf("TEST[%d] = %s (length: %d)\n", i, is_utf8_str(test[i], 0) ? 
+				"OK" : "FAIL", utf8_strlen(test[i], 0));
 	}
 
 	return 0;

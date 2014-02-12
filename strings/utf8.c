@@ -21,6 +21,7 @@
 #include "strings/utf8.h"
 #include <stdint.h>
 #include <string.h>
+#include "details/builtin_defs.h"
 
 typedef const uint8_t cuint8_t;
 typedef cuint8_t*     cpuint8_t;
@@ -43,23 +44,29 @@ static cuint8_t is_utf8_final = 8;
 static cuint8_t is_utf8_error = 0;
 
 int is_utf8_str(const char *str, size_t len) {
-	cpuint8_t s;     /* string        */
-	cpuint8_t se;    /* string end    */
-	cpuint8_t keys;  /* keys          */
-	cpuint8_t lk;    /* left key      */
-	cpuint8_t mk;    /* middle key    */
-	cpuint8_t rk;    /* right key     */
-	uint8_t   cs;    /* current state */
-	uint8_t   klen;  /* key length    */
-	uint8_t   trans; /* transfigure   */
-	int       i;     /* iterator      */
-	int       match; /* matches       */
+	return utf8_strlen(str, len) != -1;
+}
 
-	if (!len) len = strlen(str);
+int utf8_strlen(const char *str, size_t size) {
+	cpuint8_t s;        /* string        */
+	cpuint8_t se;       /* string end    */
+	cpuint8_t keys;     /* keys          */
+	cpuint8_t lk;       /* left key      */
+	cpuint8_t mk;       /* middle key    */
+	cpuint8_t rk;       /* right key     */
+	uint8_t   cs;       /* current state */
+	uint8_t   klen;     /* key length    */
+	uint8_t   trans;    /* transfigure   */
+	int       i;        /* iterator      */
+	int       match;    /* matches       */
+	int       result;   /* result        */
+
+	if (!size) size = strlen(str);
 
 	s = (cpuint8_t)str;
 	cs = is_utf8_final;
-	for (se = s + len; s != se && cs != is_utf8_error; ++s) {
+	result = 0;
+	for (se = s + size; s != se && cs != is_utf8_error; ++s) {
 		trans = (cs - 1) << 1;
 		keys = _is_utf8_trans_keys + trans; 
 		match = 0;
@@ -81,8 +88,9 @@ int is_utf8_str(const char *str, size_t len) {
 		}
 
 		cs = _is_utf8_trans_targs[trans];
+		result += cs == is_utf8_final ? 1 : 0;
 	}
 
-	return cs == is_utf8_final;
+	return BUILTIN_LIKELY(cs == is_utf8_final) ? result : -1;
 }
 
