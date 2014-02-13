@@ -18,6 +18,9 @@
  * Author: Denis Novikov <denisnovikov@garant.ru>
  */
 
+#ifndef SANDBOX_STRINGS_UTF8_H__
+#define SANDBOX_STRINGS_UTF8_H__
+
 #if defined(__cplusplus)
 #	include <cstddef>
 extern "C" {
@@ -45,4 +48,6 @@ int utf8_strlen(const char *str, size_t size);
 #if defined(__cplusplus)
 }
 #endif
+
+#endif  /* SANDBOX_STRINGS_UTF8_H__ */
 

@@ -19,7 +19,9 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include "strings/utf8.h"
+#include "sse2/utf8_strlen.h"
 
 int main() {
 	int i;
@@ -35,13 +37,16 @@ int main() {
 		NULL
 	};
 
-	printf("TEST[0] = %s (length: %d)\n", is_utf8_str(test[0], 0) ? 
-			"OK" : "FAIL", utf8_strlen(test[0], 0));
-	printf("TEST[1] = %s (length: %d)\n", is_utf8_str(test[1], 0) ? 
-			"FAIL" : "OK", utf8_strlen(test[1], 0));
+	printf("TEST[0] = %s (length: %d[%d])\n", is_utf8_str(test[0], 0) ? 
+			"OK" : "FAIL", utf8_strlen(test[0], 0),
+			utf8_strlen_sse2(test[0], strlen(test[0])));
+	printf("TEST[1] = %s (length: %d[%d])\n", is_utf8_str(test[1], 0) ? 
+			"FAIL" : "OK", utf8_strlen(test[1], 0),
+			utf8_strlen_sse2(test[1], strlen(test[1])));
 	for (i = 2; test[i]; ++i) {
-		printf("TEST[%d] = %s (length: %d)\n", i, is_utf8_str(test[i], 0) ? 
-				"OK" : "FAIL", utf8_strlen(test[i], 0));
+		printf("TEST[%d] = %s (length: %d[%d])\n", i, is_utf8_str(test[i], 0) ? 
+				"OK" : "FAIL", utf8_strlen(test[i], 0),
+			utf8_strlen_sse2(test[i], strlen(test[i])));
 	}
 
 	return 0;
