@@ -48,11 +48,10 @@ unsigned calc_checkdigit(const char *x, const char *w) {
 	xmm1 = _mm_loadu_si128((const __m128i*)w);
 
 	/* array of zeros */
-	xmm2 = _mm_set_epi32(0x30303030, 0x30303030, 0x30303030, 0x30303030);
+	xmm2 = _mm_set1_epi8(0x30);
 	/* !isdigit(x[i]) */
 	/* * x[i] > '9' */
-	xmm3 = _mm_cmpgt_epi8(xmm0, _mm_set_epi32(0x39393939, 0x39393939, 
-			0x39393939, 0x39393939));
+	xmm3 = _mm_cmpgt_epi8(xmm0, _mm_set1_epi8(0x39));
 	/* * x[i] < '0' | x[i] > '9' */
 	xmm3 = _mm_or_si128(xmm3, _mm_cmplt_epi8(xmm0, xmm2));
 	/* w[i] != 0 & !isdigit(x[i]) */
@@ -65,12 +64,12 @@ unsigned calc_checkdigit(const char *x, const char *w) {
 	/* convert string to array of ints: x[i] - '0' */
 	xmm0 = _mm_sub_epi8(xmm0, xmm2);
 	/* lo-mask */
-	xmm2 = _mm_set_epi32(0x000F000F, 0x000F000F, 0x000F000F, 0x000F000F);
+	xmm2 = _mm_set1_epi16(0x000F);
 	/* multiply (lo) arrays */
 	xmm2 = _mm_mullo_epi16(_mm_and_si128(xmm2, xmm0), 
 			_mm_and_si128(xmm2, xmm1));
 	/* hi-mask */
-	xmm3 = _mm_set_epi32(0x0F000F00, 0x0F000F00, 0x0F000F00, 0x0F000F00);
+	xmm3 = _mm_set1_epi16(0x0F00);
 	/* apply hi-mask */
 	xmm0 = _mm_and_si128(xmm0, xmm3);
 	xmm1 = _mm_and_si128(xmm1, xmm3);

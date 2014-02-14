@@ -28,9 +28,8 @@ int utf8_strlen_sse2(const char *str, size_t size) {
 	int result;
 	result = 0;
 #if !defined(__SSE2__)
-	while (size--) {
+	while (*(str++) && size--) {
 		result += ((*str & 0xC0) != 0x80) ? 1 : 0;
-		++str;
 	}
 #else
 	BUILTIN_STATICASSERT((sizeof(__m128i) == 16), "Wrong size of MMX registry");
@@ -53,13 +52,12 @@ int utf8_strlen_sse2(const char *str, size_t size) {
 		int pos;
 		int i;
 
-		size &= ~0xFLU;
-		xmm1 = _mm_set_epi32(0xC0C0C0C0, 0xC0C0C0C0, 0xC0C0C0C0, 0xC0C0C0C0);
-		xmm2 = _mm_set_epi32(0x80808080, 0x80808080, 0x80808080, 0x80808080);
+		xmm1 = _mm_set1_epi8(0xC0);
+		xmm2 = _mm_set1_epi8(0x80);
 		xmm3 = _mm_setzero_si128();
 		pos = 0;
 
-		for (; size; size -= 16, str += 16) {
+		for (size &= ~0xFLU; size; size -= 16, str += 16) {
 			/* next 16 bytes */
 			xmm0 = _mm_loadu_si128((const __m128i*)str);
 			/* compare with zeroes */
