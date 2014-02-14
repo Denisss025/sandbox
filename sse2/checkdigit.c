@@ -44,10 +44,10 @@ unsigned calc_checkdigit(const char *x, const char *w) {
 	__m128i xmm3;
 	/* load string into xmm registry */
 	xmm0 = _mm_loadu_si128((const __m128i*)x);
-	/* load control sum array */
+	/* load weights array */
 	xmm1 = _mm_loadu_si128((const __m128i*)w);
 
-	/* array of zeros */
+	/* array of '0' */
 	xmm2 = _mm_set1_epi8(0x30);
 	/* !isdigit(x[i]) */
 	/* * x[i] > '9' */
@@ -62,7 +62,7 @@ unsigned calc_checkdigit(const char *x, const char *w) {
 	mask = _mm_movemask_epi8(xmm3);
 
 	/* convert string to array of ints: x[i] - '0' */
-	xmm0 = _mm_sub_epi8(xmm0, xmm2);
+	xmm0 = _mm_xor_si128(xmm0, xmm2);
 	/* lo-mask */
 	xmm2 = _mm_set1_epi16(0x000F);
 	/* multiply (lo) arrays */
@@ -79,6 +79,7 @@ unsigned calc_checkdigit(const char *x, const char *w) {
 	xmm2 = _mm_slli_si128(xmm2, 1);
 	/* sum all the items of the array */
 	xmm0 = _mm_sad_epu8(xmm0, xmm2);
+	
 	sum = BUILTIN_UNLIKELY(mask) ? WRONG_VAL 
 			: _mm_extract_epi16(xmm0, 0) + _mm_extract_epi16(xmm0, 4);
 #endif
