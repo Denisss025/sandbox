@@ -21,10 +21,11 @@
 #ifndef SANDBOX_SSE2_CHECKDIGIT_H__
 #define SANDBOX_SSE2_CHECKDIGIT_H__
 
-#include <stddef.h>
-
 #if defined(__cplusplus)
+#	include <cstddef>
 extern "C" {
+#else
+#	include <stddef.h>
 #endif
 	/**
 	 * @brief Get the weighted sum of the string.
@@ -43,21 +44,16 @@ extern "C" {
 
 	/**
 	 * @brief Check if ogrn is correct.
-	 * @param ogrn - String that contains OGRN (13 chars, aligned to 16 bytes).
-	 * @return \em true if the OGRN string is correct.
+	 * @param ogrn - String that contains OGRN (13 or 15 chars, aligned to 16 bytes).
+	 * @param len - length of the string.
+	 * @param year - current year.
+	 * @return \em true if the OGRN[IP] string is correct.
 	 */
-	int check_ogrn(const char *ogrn);
-
-	/**
-	 * @brief Check if ogrnip is correct.
-	 * @param ogrnip - String that contains OGRNIP (15 chars, aligned to 16 bytes).
-	 * @return \em true if the OGRNIP string is correct.
-	 */
-	int check_ogrnip(const char *ogrnip);
+	int check_ogrn(const char *ogrn, size_t len, unsigned int year);
 
 	/**
 	 * @brief Check if inn is correct.
-	 * @param inn - String that contains OGRN (10 or 12 chars, aligned to 16 bytes).
+	 * @param inn - String that contains INN (10 or 12 chars, aligned to 16 bytes).
 	 * @return \em true if the INN string is correct.
 	 */
 	int check_inn(const char *inn, size_t len);

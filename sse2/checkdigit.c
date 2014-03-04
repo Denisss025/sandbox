@@ -17,7 +17,7 @@
  *
  * Author: Denis Novikov <denisnovikov@garant.ru>
  */
- 
+
 #include "sse2/checkdigit.h"
 #if defined(__SSE2__)
 #	include <emmintrin.h>
@@ -96,8 +96,12 @@ unsigned calc_checkdigit(const char *x, const char *w) {
 			BUILTIN_UNLIKELY((VAR(sum) % (mod) % 10 + '0') !=  \
 			(idx)[(pos)])) { return 0; }}
 
+static inline int _check_region(const char *val) {
+	return !(val[0] == val[1] && val[0] == '0');
+}
+
 int check_inn(const char *inn, size_t len) {
-	const char x_cs[18] = { 
+	static const char x_cs[18] = { 
 		3, 7, 2, 4, 10, 3, 5, 9, 4, 
 		6, 8, 0, 0,  0, 0, 0, 0, 0 };
 
@@ -110,24 +114,33 @@ int check_inn(const char *inn, size_t len) {
 	}
 
 	QUIT_ON_WRONG_WSUM(inn, m, 11, len-1);
-	return 1;
+	return _check_region(inn);
 }
 
-int check_ogrn(const char *ogrn) {
-	const char x_13[16] = {
-		 10,  1, 10,  1, 10,  1, 10,  1,
-		 10,  1, 10,  1,  0,  0,  0,  0 };
+int check_ogrn(const char *ogrn, size_t len, unsigned int year) {
+	static const char x[40] = {
+		 0, 10, 20, 30, 40, 50, 60, 70,
+		80, 90,  0,  0, 10,  1,  4,  3, 
+		12,  9, 10,  1,  4,  3, 12,  9, 
+		10,  1, 10,  1, 10,  1, 10,  1, 
+		10,  1, 10,  1,  0,  0,  0,  0
+	};
+	static const char *mul10 = x;
+	static const char *x_13  = x + 24;
+	static const char *x_15  = x + 10;
+	const char *ogrnip = ogrn - 2;
 
-	QUIT_ON_WRONG_WSUM(ogrn, x_13, 11, 12);
-	return 1;
-}
+	unsigned int num_year;
 
-int check_ogrnip(const char *ogrnip) {
- 	const char x_15[16] = { 
-		10,  1,  4,  3, 12,  9, 10,  1, 
-		 4,  3, 12,  9, 10,  1,  0,  0 };
+	if (len == 13) {
+		QUIT_ON_WRONG_WSUM(ogrn, x_13, 11, 12);
+	} else {
+		QUIT_ON_WRONG_WSUM(ogrnip, x_15, 13, 16);
+	}
 
-	QUIT_ON_WRONG_WSUM(ogrnip, x_15, 13, 14);
-	return 1;
+	num_year = 1999u + mul10[ogrn[1] & 0xF] + (ogrn[2] & 0xF);
+	return BUILTIN_LIKELY(num_year > 2000u) && 
+			BUILTIN_LIKELY(num_year < year) && 
+			BUILTIN_LIKELY(_check_region(ogrn + 3));
 }
 
